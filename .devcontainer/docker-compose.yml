@@ -1,0 +1,29 @@
+services:
+  app:
+    # Utilizamos uma imagem oficial da Microsoft focada em DevContainers.
+    # Ela já vem com Python 3.11, Git, cURL, Zsh e várias ferramentas utilitárias pré-instaladas
+    image: mcr.microsoft.com/devcontainers/python:3.11
+
+    volumes:
+      # Sincronização de código. Mapeia a pasta atual (..) do host para o /workspace do container.
+      # ":cached" otimiza leitura no Mac/Windows.
+      - ..:/workspace:cached
+
+    # Mantém o container vivo indefinidamente.
+    command: sleep infinity
+
+    # Faz o container "app" compartilhar a rede com o "db".
+    # Assim, no código, você consegue conectar no Postgres via "localhost".
+    # network_mode: service:db
+    ports:
+      - "8000:8000"
+
+  db:
+    image: postgres:15
+    restart: unless-stopped # Se o banco crashar, o Docker sobe ele novamente automaticamente.
+
+    environment:
+      # Variáveis de ambiente do Postgres
+      POSTGRES_USER: dev_user
+      POSTGRES_PASSWORD: dev_password
+      POSTGRES_DB: api_db
