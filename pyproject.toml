@@ -137,6 +137,8 @@ module = [
     "asyncpg.*",
     "psycopg2.*",
     "uvicorn.*",
+    "httpx.*",
+    "pytest_asyncio.*",
 ]
 ignore_missing_imports = true
 
