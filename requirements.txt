@@ -21,6 +21,7 @@ pydantic_core==2.41.5
 Pygments==2.19.2
 pytest==9.0.2
 python-dotenv==1.2.2
+ruff==0.15.5
 smmap==5.0.2
 SQLAlchemy==2.0.48
 starlette==0.52.1

@@ -21,7 +21,9 @@
         "ms-python.python", // Suporte base ao Python (debug, testes, formatação).
         "ms-python.vscode-pylance", // Servidor de linguagem ultra-rápido para autocompletar código (IntelliSense).
         "mtxr.sqltools", // Cliente de banco de dados nativo na IDE (como um DBeaver ou DataGrip embutido).
-        "mtxr.sqltools-driver-pg" // Driver específico para conectarmos no Postgres via IDE.
+        "mtxr.sqltools-driver-pg", // Driver específico para conectarmos no Postgres via IDE.
+        "tamasfe.even-better-toml",
+        "openai.chatgpt"
       ]
     }
   },

@@ -1,7 +1,9 @@
 from uuid import uuid4
+
 import pytest
 
 pytestmark = pytest.mark.asyncio
+
 
 async def test_create_candidate(client):
     payload = {
@@ -15,9 +17,10 @@ async def test_create_candidate(client):
     assert response.status_code == 201
     assert response.json()["name"] == "Abner Final Test"
 
+
 async def test_list_candidates(client):
     response = await client.get("/api/v1/candidates/")
-    
+
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
