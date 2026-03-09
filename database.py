@@ -16,6 +16,7 @@ AsyncSessionLocal = async_sessionmaker(
     engine, expire_on_commit=False, class_=AsyncSession
 )
 
+
 # Classe mãe que nossos models vão herdar para serem reconhecidos como tabelas.
 # DeclarativeBase é a API do SQLAlchemy 2.0 com suporte completo a type checking.
 class Base(DeclarativeBase):

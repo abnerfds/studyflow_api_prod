@@ -50,7 +50,9 @@ async def create_candidate(
 # --- NOVA ROTA GET (Listagem) ---
 # O response_model aqui usa list[] porque vamos devolver um array de candidatos
 @router.get("/", response_model=list[CandidateResponse])
-async def list_candidates(db: AsyncSession = Depends(get_db)) -> list[CandidateResponse]:
+async def list_candidates(
+    db: AsyncSession = Depends(get_db),
+) -> list[CandidateResponse]:
     # 1. Monta a query estruturada (equivalente a SELECT * FROM candidates)
     query = select(Candidate)
 
