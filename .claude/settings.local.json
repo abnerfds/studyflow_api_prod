@@ -5,7 +5,10 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(mypy .:*)"
+      "Bash(mypy .:*)",
+      "Bash(pip install:*)",
+      "Bash(python3:*)",
+      "Bash(.venv/bin/bandit:*)"
     ]
   }
 }
