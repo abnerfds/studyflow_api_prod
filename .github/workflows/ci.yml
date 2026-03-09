@@ -102,9 +102,10 @@ jobs:
   # SQL injection, hardcoded passwords, uso de subprocess inseguro, etc.
   #
   # Flags:
-  #   -r .          → recursivo a partir da raiz do projeto
-  #   -ll           → reporta apenas severidade MÉDIA e ALTA (filtra ruído)
-  #   --exclude     → ignora diretório de testes (asserts são falsos positivos)
+  #   -r .            → recursivo a partir da raiz do projeto
+  #   -l              → reporta severidade LOW, MEDIUM e HIGH (tudo)
+  #   -c pyproject.toml → aplica os `skips` configurados (B101, B104)
+  #   --exclude       → ignora diretório de testes e venvs
   # ---------------------------------------------------------------------------
   security:
     name: "Security Analysis (Bandit)"
@@ -124,4 +125,4 @@ jobs:
         run: pip install bandit
 
       - name: "bandit — Escaneamento de vulnerabilidades de segurança"
-        run: bandit -r . -ll --exclude tests/,.venv/,venv/
+        run: bandit -r . -l -c pyproject.toml --exclude tests/,.venv/,venv/
