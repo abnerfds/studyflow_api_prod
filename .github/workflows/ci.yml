@@ -1,0 +1,127 @@
+# =============================================================================
+# CI Pipeline — StudyFlow API
+# =============================================================================
+# Arquitetura: 3 jobs independentes rodando em PARALELO.
+#
+# Fail-Fast Strategy:
+#   - Cada job é autônomo. Todos iniciam ao mesmo tempo, maximizando a
+#     eficiência de tempo de execução.
+#   - `concurrency.cancel-in-progress: true` garante que um novo push
+#     cancela a run anterior do mesmo branch, evitando desperdício de runners.
+#   - O PR/push só é aprovado se TODOS os 3 jobs passarem (status checks
+#     obrigatórios configurados nas Branch Protection Rules do repositório).
+#
+# Triggers:
+#   - push para `main`: valida o código após merge.
+#   - pull_request (qualquer branch): valida antes do merge (gate de qualidade).
+# =============================================================================
+
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+# Cancela runs em progresso do mesmo branch/PR ao receber um novo push.
+# Economiza minutos do GitHub Actions e evita runs de código obsoleto.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # JOB 1: Linter & Formatter — Ruff
+  # ---------------------------------------------------------------------------
+  # Ruff substitui simultaneamente: Black (formatter) + isort (import sorter)
+  # + Flake8 (linter). Uma única ferramenta, escrita em Rust, ~100x mais rápida.
+  #
+  # `ruff check` — verifica violações de estilo, imports e anti-patterns.
+  # `ruff format --check` — verifica formatação sem modificar os arquivos.
+  # ---------------------------------------------------------------------------
+  lint:
+    name: "Linter & Formatter (Ruff)"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código-fonte
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          # Cache das dependências pip baseado no hash do requirements.txt.
+          # Reduz o tempo de instalação de ~30s para ~2s em runs subsequentes.
+          cache: "pip"
+
+      - name: Instalar Ruff
+        run: pip install ruff
+
+      - name: "ruff check — Análise de código (lint + isort)"
+        run: ruff check .
+
+      - name: "ruff format --check — Verificação de formatação (estilo Black)"
+        run: ruff format --check .
+
+  # ---------------------------------------------------------------------------
+  # JOB 2: Static Type Checking — Mypy
+  # ---------------------------------------------------------------------------
+  # Mypy em modo estrito (`--strict`) habilita todas as verificações de tipo,
+  # incluindo: disallow-untyped-defs, warn-return-any, no-implicit-reexport.
+  #
+  # Instalamos o requirements.txt completo para que o Mypy possa inspecionar
+  # os stubs de tipo das bibliotecas (FastAPI, Pydantic, SQLAlchemy).
+  # ---------------------------------------------------------------------------
+  type-check:
+    name: "Static Type Checking (Mypy)"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código-fonte
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Instalar dependências do projeto + Mypy
+        run: pip install -r requirements.txt mypy
+
+      - name: "mypy — Verificação de tipos estáticos (modo estrito)"
+        run: mypy . --config-file pyproject.toml
+
+  # ---------------------------------------------------------------------------
+  # JOB 3: Security Analysis — Bandit
+  # ---------------------------------------------------------------------------
+  # Bandit é o SAST (Static Application Security Testing) padrão para Python.
+  # Ele analisa o AST do código em busca de padrões de vulnerabilidade comuns:
+  # SQL injection, hardcoded passwords, uso de subprocess inseguro, etc.
+  #
+  # Flags:
+  #   -r .          → recursivo a partir da raiz do projeto
+  #   -ll           → reporta apenas severidade MÉDIA e ALTA (filtra ruído)
+  #   --exclude     → ignora diretório de testes (asserts são falsos positivos)
+  # ---------------------------------------------------------------------------
+  security:
+    name: "Security Analysis (Bandit)"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código-fonte
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Instalar Bandit
+        run: pip install bandit
+
+      - name: "bandit — Escaneamento de vulnerabilidades de segurança"
+        run: bandit -r . -ll --exclude tests/,.venv/,venv/

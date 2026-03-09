@@ -1,0 +1,100 @@
+# =============================================================================
+# .pre-commit-config.yaml — StudyFlow API
+# =============================================================================
+# Configuração do pre-commit: executa as MESMAS verificações do CI localmente,
+# ANTES de cada commit. Isso cria uma "primeira linha de defesa" que impede
+# que código com problemas sequer chegue ao repositório remoto.
+#
+# Filosofia "Shift Left": mova a detecção de erros para o mais cedo possível
+# no ciclo de desenvolvimento (IDE → commit → CI → deploy).
+#
+# Sincronizado com: .github/workflows/ci.yml
+#
+# Setup (uma vez por desenvolvedor):
+#   pip install pre-commit
+#   pre-commit install        # instala os hooks no .git/hooks/
+#   pre-commit run --all-files # executa em todos os arquivos (validação inicial)
+# =============================================================================
+
+# Versão padrão do repositório base do pre-commit
+default_language_version:
+  python: python3.11
+
+repos:
+  # ---------------------------------------------------------------------------
+  # Hooks Básicos de Qualidade de Arquivo
+  # ---------------------------------------------------------------------------
+  # Verificações rápidas que não requerem instalação de dependências pesadas.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      # Impede commits de arquivos que contêm chaves de API, senhas, etc.
+      - id: detect-private-key
+
+      # Remove espaços em branco ao final das linhas.
+      - id: trailing-whitespace
+
+      # Garante que todos os arquivos terminam com uma linha em branco (POSIX).
+      - id: end-of-file-fixer
+
+      # Valida a sintaxe de arquivos YAML (ci.yml, docker-compose.yml, etc.).
+      - id: check-yaml
+
+      # Valida a sintaxe de arquivos TOML (pyproject.toml).
+      - id: check-toml
+
+      # Impede commits direto na branch main (força uso de PRs).
+      - id: no-commit-to-branch
+        args: [--branch, main]
+
+  # ---------------------------------------------------------------------------
+  # Ruff — Linter + Formatter (substitui Black + isort + Flake8)
+  # ---------------------------------------------------------------------------
+  # Sincronizado com `ruff check` e `ruff format --check` do CI.
+  # O pre-commit CORRIGE automaticamente os problemas (ao contrário do CI,
+  # que apenas REPORTA). Após a correção, o arquivo é re-staged automaticamente.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      # Equivalente a `ruff check --fix` — corrige violações de lint e isort.
+      - id: ruff
+        args: [--fix]
+
+      # Equivalente a `ruff format` — aplica formatação estilo Black.
+      - id: ruff-format
+
+  # ---------------------------------------------------------------------------
+  # Mypy — Verificação de Tipos Estáticos
+  # ---------------------------------------------------------------------------
+  # Sincronizado com `mypy . --config-file pyproject.toml` do CI.
+  # NOTA: O Mypy é a etapa mais lenta do pre-commit (~5-15s em projetos médios).
+  # A configuração `additional_dependencies` garante que as bibliotecas
+  # necessárias estejam disponíveis no ambiente isolado do pre-commit.
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        # Passa os arquivos staged + configuração do pyproject.toml.
+        args: [--config-file, pyproject.toml]
+        # Dependências necessárias para o Mypy inspecionar os stubs de tipo.
+        # Mantenha sincronizado com o requirements.txt do projeto.
+        additional_dependencies:
+          - "fastapi>=0.135.0"
+          - "pydantic>=2.0.0"
+          - "pydantic-settings>=2.0.0"
+          - "sqlalchemy>=2.0.0"
+          - "pytest>=9.0.0"
+
+  # ---------------------------------------------------------------------------
+  # Bandit — SAST (Análise de Segurança)
+  # ---------------------------------------------------------------------------
+  # Sincronizado com `bandit -r . -ll --exclude tests/` do CI.
+  # O pre-commit executa o Bandit apenas nos arquivos Python staged.
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.3
+    hooks:
+      - id: bandit
+        # Aponta para a configuração centralizada no pyproject.toml.
+        args: [-c, pyproject.toml]
+        # Restringe a análise apenas a arquivos Python (ignora YAML, TOML, etc.).
+        types: [python]

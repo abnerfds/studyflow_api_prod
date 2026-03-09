@@ -1,0 +1,177 @@
+# =============================================================================
+# pyproject.toml — StudyFlow API
+# =============================================================================
+# Arquivo central de configuração do projeto Python (PEP 518/621).
+# Consolida as configurações de: Ruff, Mypy e Bandit em um único lugar,
+# eliminando a proliferação de arquivos de configuração (.flake8, .mypy.ini,
+# setup.cfg, etc.).
+# =============================================================================
+
+[tool.ruff]
+# ---------------------------------------------------------------------------
+# Configuração Base do Ruff
+# Ruff atua como substituto unificado de: Black + isort + Flake8
+# ---------------------------------------------------------------------------
+
+# Padrão de 88 caracteres (herança do Black — largura otimizada para diff side-by-side).
+line-length = 88
+
+# Informa ao Ruff qual versão do Python usar para sugestões de modernização (UP*).
+target-version = "py311"
+
+# Exclui diretórios que não são código da aplicação.
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".pytest_cache",
+    "*.egg-info",
+]
+
+[tool.ruff.lint]
+# ---------------------------------------------------------------------------
+# Regras de Lint Ativas
+# ---------------------------------------------------------------------------
+# Prefixos selecionados:
+#   E/W  → pycodestyle (erros e avisos de estilo PEP 8)
+#   F    → Pyflakes (variáveis não usadas, imports não usados)
+#   I    → isort (ordenação e agrupamento de imports — substitui isort)
+#   B    → flake8-bugbear (anti-patterns e bugs comuns)
+#   UP   → pyupgrade (modernização de sintaxe para Python 3.11+)
+#   C4   → flake8-comprehensions (simplificação de list/dict/set comprehensions)
+#   SIM  → flake8-simplify (simplificação de blocos if/else redundantes)
+#   S    → flake8-bandit (segurança — camada extra via linter, complementa Bandit CLI)
+select = ["E", "W", "F", "I", "B", "UP", "C4", "SIM", "S"]
+
+# Regras desativadas intencionalmente para evitar falsos positivos:
+ignore = [
+    "E501",   # Line too long → delegado ao formatter (ruff format)
+    "B008",   # Do not perform function calls in default arguments
+              # → FastAPI usa Depends() como default arg (padrão do framework)
+    "S101",   # Use of assert detected → falso positivo em testes pytest
+    "S104",   # Possible binding to all interfaces → necessário para uvicorn/Docker
+    "S603",   # subprocess call → pode ser necessário em scripts de infraestrutura
+    "UP007",  # Use X | Y for union type annotations → compatibilidade com Pydantic v1 em alguns casos
+]
+
+[tool.ruff.lint.isort]
+# ---------------------------------------------------------------------------
+# Configuração do isort (via Ruff)
+# Substitui o isort standalone com a mesma lógica de agrupamento.
+# ---------------------------------------------------------------------------
+
+# Define os módulos de primeiro nível do projeto (importados sem pacote externo).
+# O Ruff/isort os separará dos imports de terceiros corretamente.
+known-first-party = [
+    "main",
+    "config",
+    "database",
+    "models",
+    "schemas",
+    "routers",
+]
+
+# Força seção separada para imports de stdlib (padrão isort profile=black).
+force-sort-within-sections = true
+
+[tool.ruff.format]
+# ---------------------------------------------------------------------------
+# Configuração do Formatter (substitui Black)
+# ---------------------------------------------------------------------------
+
+# Aspas duplas — padrão Black, consistente com PEP 8.
+quote-style = "double"
+
+# Indentação com espaços (não tabs) — padrão Python.
+indent-style = "space"
+
+# Preserva trailing commas onde o Black as manteria.
+skip-magic-trailing-comma = false
+
+# Detecta automaticamente o line ending do arquivo (LF no Linux/Mac, CRLF no Windows).
+line-ending = "auto"
+
+# =============================================================================
+
+[tool.mypy]
+# ---------------------------------------------------------------------------
+# Configuração do Mypy — Verificação de Tipos Estáticos
+# ---------------------------------------------------------------------------
+
+python_version = "3.11"
+
+# `strict = true` habilita o conjunto completo de verificações:
+# --disallow-any-generics, --disallow-untyped-defs, --disallow-incomplete-defs,
+# --warn-return-any, --no-implicit-reexport, --strict-equality, etc.
+strict = true
+
+# Exibe o código de erro junto com a mensagem para facilitar supressões pontuais.
+show_error_codes = true
+
+# Exibe o contexto (linha de código) onde o erro ocorre.
+show_column_numbers = true
+
+# Relatório de erros com cores no terminal.
+pretty = true
+
+# Garante que imports implícitos de namespace packages funcionem.
+namespace_packages = true
+
+# Diretórios a ignorar completamente na verificação.
+exclude = [
+    "venv/",
+    ".venv/",
+]
+
+# ---------------------------------------------------------------------------
+# Overrides por Módulo — Evita Falsos Positivos de Bibliotecas Externas
+# ---------------------------------------------------------------------------
+# Bibliotecas sem stubs de tipo completos geram erros de "missing imports".
+# Configuramos `ignore_missing_imports = true` apenas para elas, mantendo
+# a verificação estrita no nosso próprio código.
+
+[[tool.mypy.overrides]]
+module = [
+    "sqlalchemy.*",
+    "asyncpg.*",
+    "psycopg2.*",
+    "uvicorn.*",
+]
+ignore_missing_imports = true
+
+# Flexibilização para código de teste: permite asserts sem tipo e fixtures não tipadas.
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+# =============================================================================
+
+[tool.bandit]
+# ---------------------------------------------------------------------------
+# Configuração do Bandit — SAST (Análise Estática de Segurança)
+# ---------------------------------------------------------------------------
+
+# Diretórios a excluir do escaneamento.
+exclude_dirs = ["tests", ".venv", "venv", "__pycache__"]
+
+# Regras ignoradas globalmente:
+#   B101 → assert statements → falsos positivos em testes (pytest usa assert)
+#   B104 → binding to 0.0.0.0 → necessário para containers Docker
+skips = ["B101", "B104"]
+
+# Nível mínimo de severidade para reportar: LOW, MEDIUM, HIGH
+# "MEDIUM" reduz ruído sem perder vulnerabilidades críticas.
+# No CI, usamos `-ll` (equivalente) via flag de linha de comando.
+
+# =============================================================================
+
+[tool.pytest.ini_options]
+# ---------------------------------------------------------------------------
+# Migração do pytest.ini para pyproject.toml
+# Consolida TODAS as configurações de ferramentas em um único arquivo.
+# ---------------------------------------------------------------------------
+
+asyncio_mode = "auto"
+asyncio_default_test_loop_scope = "function"
