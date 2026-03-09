@@ -1,3 +1,4 @@
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -13,7 +14,7 @@ from routers import candidates
 # Substitui os antigos eventos de startup/shutdown.
 # Tudo antes do "yield" roda quando o servidor sobe. Tudo depois, quando ele desliga.
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Abre uma transação isolada com o Postgres
     async with engine.begin() as conn:
         # Inspeciona nossos models.py e cria as tabelas "candidates", "disciplines", etc., se não existirem.

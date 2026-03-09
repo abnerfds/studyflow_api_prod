@@ -1,6 +1,8 @@
 # Ferramentas do SQLAlchemy para lidar com chamadas não-bloqueantes (assíncronas)
+from collections.abc import AsyncGenerator
+
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
 # Importa as variáveis do .env (Padrão 12-Factor App de segurança)
 from config import settings
@@ -14,11 +16,13 @@ AsyncSessionLocal = async_sessionmaker(
     engine, expire_on_commit=False, class_=AsyncSession
 )
 
-# Classe mãe que nossos models vão herdar para serem reconhecidos como tabelas
-Base = declarative_base()
+# Classe mãe que nossos models vão herdar para serem reconhecidos como tabelas.
+# DeclarativeBase é a API do SQLAlchemy 2.0 com suporte completo a type checking.
+class Base(DeclarativeBase):
+    pass
 
 
 # Gerador de injeção de dependência. Abre e fecha a conexão do banco a cada requisição HTTP.
-async def get_db():
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         yield session

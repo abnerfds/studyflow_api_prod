@@ -25,7 +25,7 @@ async def create_candidate(
     # Injeção de Dependência 2: Depends(get_db) abre uma conexão com o Postgres EXCLUSIVA
     # para esta requisição HTTP e garante que ela será fechada no final.
     db: AsyncSession = Depends(get_db),
-):
+) -> CandidateResponse:
     # Instanciamos a classe do ORM com os dados limpos e validados pelo Pydantic (candidate.name, etc.)
     new_candidate = Candidate(
         name=candidate.name, email=candidate.email, exam_focus=candidate.exam_focus
@@ -42,15 +42,15 @@ async def create_candidate(
     # (por exemplo, busca o 'id' auto-incrementado que o Postgres acabou de gerar).
     await db.refresh(new_candidate)
 
-    # Retorna o objeto do SQLAlchemy. O FastAPI, vendo o 'response_model' lá em cima,
-    # passa esse objeto pelo schema CandidateResponse, converte pra JSON e devolve pro cliente.
-    return new_candidate
+    # Converte explicitamente o ORM object → Pydantic (from_attributes=True no schema).
+    # Garante type safety completo sem depender da serialização implícita do FastAPI.
+    return CandidateResponse.model_validate(new_candidate)
 
 
 # --- NOVA ROTA GET (Listagem) ---
 # O response_model aqui usa list[] porque vamos devolver um array de candidatos
 @router.get("/", response_model=list[CandidateResponse])
-async def list_candidates(db: AsyncSession = Depends(get_db)):
+async def list_candidates(db: AsyncSession = Depends(get_db)) -> list[CandidateResponse]:
     # 1. Monta a query estruturada (equivalente a SELECT * FROM candidates)
     query = select(Candidate)
 
@@ -60,5 +60,5 @@ async def list_candidates(db: AsyncSession = Depends(get_db)):
     # 3. Extrai os objetos reais do banco de dentro do resultado bruto
     candidates = result.scalars().all()
 
-    # O FastAPI converte a lista de objetos Python para um Array JSON automaticamente
-    return candidates
+    # Converte explicitamente cada ORM object → Pydantic (from_attributes=True no schema).
+    return [CandidateResponse.model_validate(c) for c in candidates]

@@ -17,4 +17,4 @@ class Settings(BaseSettings):
 
 # Instanciamos a classe em um objeto chamado 'settings'.
 # Agora, em qualquer lugar do projeto, basta importar este objeto. É um padrão Singleton prático.
-settings = Settings()
+settings = Settings()  # type: ignore[call-arg]
