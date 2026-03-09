@@ -38,6 +38,3 @@ app = FastAPI(
 # include_router age como o "require" das rotas do Laravel.
 # prefix="/api/v1": Prática de DevOps para versionar a API. O endpoint final vira POST /api/v1/candidates/
 app.include_router(candidates.router, prefix="/api/v1")
-
-# TODO: remover — linha proposital para validar o job Bandit no CI (B105: hardcoded secret)
-SECRET_KEY = "minha_chave_secreta_hardcoded_123"
