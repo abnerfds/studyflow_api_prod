@@ -1,16 +1,16 @@
 # =============================================================================
-# pyproject.toml — StudyFlow API
+# pyproject.toml
 # =============================================================================
 # Arquivo central de configuração do projeto Python (PEP 518/621).
-# Consolida as configurações de: Ruff, Mypy e Bandit em um único lugar,
+# Consolida as configurações de: Ruff e Mypy em um único lugar,
 # eliminando a proliferação de arquivos de configuração (.flake8, .mypy.ini,
-# setup.cfg, etc.).
+# setup.cfg, etc.). A análise do Bandit foi integralmente absorvida pelo Ruff.
 # =============================================================================
 
 [tool.ruff]
 # ---------------------------------------------------------------------------
 # Configuração Base do Ruff
-# Ruff atua como substituto unificado de: Black + isort + Flake8
+# Ruff atua como substituto unificado de: Black + isort + Flake8 + Bandit
 # ---------------------------------------------------------------------------
 
 # Padrão de 88 caracteres (herança do Black — largura otimizada para diff side-by-side).
@@ -41,19 +41,32 @@ exclude = [
 #   UP   → pyupgrade (modernização de sintaxe para Python 3.11+)
 #   C4   → flake8-comprehensions (simplificação de list/dict/set comprehensions)
 #   SIM  → flake8-simplify (simplificação de blocos if/else redundantes)
-#   S    → flake8-bandit (segurança — camada extra via linter, complementa Bandit CLI)
+#   S    → flake8-bandit (segurança — substitui o Bandit CLI)
 select = ["E", "W", "F", "I", "B", "UP", "C4", "SIM", "S"]
 
-# Regras desativadas intencionalmente para evitar falsos positivos:
+# Regras desativadas intencionalmente de forma global:
 ignore = [
     "E501",   # Line too long → delegado ao formatter (ruff format)
-    "B008",   # Do not perform function calls in default arguments
-              # → FastAPI usa Depends() como default arg (padrão do framework)
-    "S101",   # Use of assert detected → falso positivo em testes pytest
     "S104",   # Possible binding to all interfaces → necessário para uvicorn/Docker
     "S603",   # subprocess call → pode ser necessário em scripts de infraestrutura
-    "UP007",  # Use X | Y for union type annotations → compatibilidade com Pydantic v1 em alguns casos
+    "UP007",  # Use X | Y for union type annotations → compatibilidade com Pydantic v1
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# ---------------------------------------------------------------------------
+# Exceções Específicas por Arquivo/Diretório
+# ---------------------------------------------------------------------------
+# Permite o uso de assert (S101) apenas na pasta de testes, mantendo a
+# proibição estrita no código de produção para evitar falhas de segurança.
+"tests/**/*.py" = ["S101"]
+
+[tool.ruff.lint.flake8-bugbear]
+# ---------------------------------------------------------------------------
+# Configuração Específica do Bugbear (B)
+# ---------------------------------------------------------------------------
+# Evita falsos positivos da regra B008 (chamadas de função em argumentos padrão)
+# permitindo explicitamente as funções core do FastAPI.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "fastapi.Body"]
 
 [tool.ruff.lint.isort]
 # ---------------------------------------------------------------------------
@@ -147,25 +160,6 @@ ignore_missing_imports = true
 module = ["tests.*"]
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
-
-# =============================================================================
-
-[tool.bandit]
-# ---------------------------------------------------------------------------
-# Configuração do Bandit — SAST (Análise Estática de Segurança)
-# ---------------------------------------------------------------------------
-
-# Diretórios a excluir do escaneamento.
-exclude_dirs = ["tests", ".venv", "venv", "__pycache__"]
-
-# Regras ignoradas globalmente:
-#   B101 → assert statements → falsos positivos em testes (pytest usa assert)
-#   B104 → binding to 0.0.0.0 → necessário para containers Docker
-skips = ["B101", "B104"]
-
-# Nível mínimo de severidade para reportar: LOW, MEDIUM, HIGH
-# "MEDIUM" reduz ruído sem perder vulnerabilidades críticas.
-# No CI, usamos `-ll` (equivalente) via flag de linha de comando.
 
 # =============================================================================
 

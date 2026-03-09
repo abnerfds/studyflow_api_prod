@@ -1,18 +1,18 @@
 {
   // Define o nome do ambiente de desenvolvimento que aparece no canto inferior da IDE.
   "name": "Intensivão Python",
-  
+
   // Aponta para o orquestrador que vai subir a infraestrutura (banco + app).
   "dockerComposeFile": "docker-compose.yml",
-  
+
   // Informa à IDE em qual dos containers definidos no compose ela deve se "injetar".
   // É aqui que seu terminal e seus arquivos vão rodar.
   "service": "app",
-  
-  // Define a pasta raiz do projeto dentro do container. 
+
+  // Define a pasta raiz do projeto dentro do container.
   // No PHP, costuma ser o equivalente ao /var/www/html.
   "workspaceFolder": "/workspace",
-  
+
   "customizations": {
     "vscode": {
       // Pré-instala extensões essenciais na IDE assim que o container nasce.
@@ -27,11 +27,11 @@
       ]
     }
   },
-  
+
   // Gatilho executado automaticamente após o container estar de pé.
   // Equivalente ao "composer install" no PHP. Garante que as libs estejam prontas antes de você codar.
-  "postCreateCommand": "pip install -r requirements.txt",
-  
+  "postCreateCommand": "pip install -r requirements.txt && pre-commit install",
+
   // Mapeia portas do container para a sua máquina local (host).
   // 8000: Para você acessar a API no navegador local.
   // 5432: Caso queira conectar um DBeaver/PgAdmin da sua máquina direto no banco do container.
