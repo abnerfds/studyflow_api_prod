@@ -21,6 +21,8 @@ packaging==26.0
 platformdirs==4.9.4
 pluggy==1.6.0
 pre_commit==4.5.1
+prometheus-fastapi-instrumentator==7.1.0
+prometheus_client==0.24.1
 psycopg2-binary==2.9.11
 pydantic==2.12.5
 pydantic-settings==2.13.1

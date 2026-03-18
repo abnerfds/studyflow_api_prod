@@ -86,3 +86,49 @@ jobs:
 
       - name: "mypy — Verificação de tipos estáticos (modo estrito)"
         run: mypy . --config-file pyproject.toml
+
+  # ---------------------------------------------------------------------------
+  # JOB 3: Testes Automatizados — Pytest
+  # ---------------------------------------------------------------------------
+  # Executa a suíte de testes unitários e de integração.
+  # Garante que a lógica de negócio e os endpoints continuam funcionando.
+  # ---------------------------------------------------------------------------
+  test:
+    name: "Unit & Integration Tests (Pytest)"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código-fonte
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Instalar todas as dependências (App + Testes)
+        # 👇 MUDANÇA AQUI: Apontamos para o arquivo de testes unificado
+        run: pip install -r requirements-test.txt
+
+      - name: "pytest — Executar testes (Docker já está embutido no Runner)"
+        run: pytest -v --cov=. --cov-report=term-missing
+
+  # ---------------------------------------------------------------------------
+  # JOB 4: Validação do Container — Docker Build
+  # ---------------------------------------------------------------------------
+  # Tenta construir a imagem Docker da API. Se quebrar aqui, significa que
+  # o Dockerfile está inválido ou faltam dependências no nível do SO.
+  # ---------------------------------------------------------------------------
+  docker-check:
+    name: "Docker Build Check"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código-fonte
+        uses: actions/checkout@v4
+
+      - name: "Docker Build — Validar montagem da imagem"
+        # Tenta "buildar" a imagem usando o Dockerfile da raiz.
+        # Não faz o push, apenas verifica se compila com sucesso.
+        run: docker build -t studyflow-api:test .

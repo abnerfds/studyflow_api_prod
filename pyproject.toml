@@ -152,6 +152,7 @@ module = [
     "uvicorn.*",
     "httpx.*",
     "pytest_asyncio.*",
+    "testcontainers.*",
 ]
 ignore_missing_imports = true
 
@@ -164,10 +165,6 @@ disallow_incomplete_defs = false
 # =============================================================================
 
 [tool.pytest.ini_options]
-# ---------------------------------------------------------------------------
-# Migração do pytest.ini para pyproject.toml
-# Consolida TODAS as configurações de ferramentas em um único arquivo.
-# ---------------------------------------------------------------------------
-
 asyncio_mode = "auto"
-asyncio_default_test_loop_scope = "function"
+asyncio_default_test_loop_scope = "session"
+asyncio_default_fixture_loop_scope = "session"

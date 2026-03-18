@@ -1,0 +1,12 @@
+global:
+  # Define o intervalo de tempo (15 segundos) em que o Prometheus fará requisições para buscar dados atualizados
+  scrape_interval: 15s
+
+scrape_configs:
+  # Rótulo de identificação para agrupar essas métricas quando formos buscar no Grafana
+  - job_name: 'fastapi-app'
+    # O endpoint exato que configuramos no Instrumentator da API
+    metrics_path: '/metrics'
+    static_configs:
+      # Endereço da API. host.docker.internal é o atalho para o container acessar a rede local (localhost) do seu WSL
+      - targets: ['host.docker.internal:8000']
