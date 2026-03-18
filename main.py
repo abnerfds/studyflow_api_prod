@@ -1,40 +1,51 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+import os
 
 from fastapi import FastAPI
+from prometheus_fastapi_instrumentator import Instrumentator
 
-# Importamos a engine do banco para poder criar as tabelas ao iniciar
-from database import Base, engine
-
-# Importamos nosso "Controller" para registrar no servidor principal
+from config import Settings
+from database import Base, setup_database
 from routers import candidates
 
-
-# --- GESTÃO DE CICLO DE VIDA (Lifespan) ---
-# Substitui os antigos eventos de startup/shutdown.
-# Tudo antes do "yield" roda quando o servidor sobe. Tudo depois, quando ele desliga.
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    # Abre uma transação isolada com o Postgres
-    async with engine.begin() as conn:
-        # Inspeciona nossos models.py e cria as tabelas "candidates", "disciplines", etc., se não existirem.
-        # run_sync: Um utilitário para rodar operações síncronas de infraestrutura dentro do nosso fluxo assíncrono.
-        await conn.run_sync(Base.metadata.create_all)
-
-    # Libera a aplicação para rodar e receber conexões
-    yield
+_app: FastAPI | None = None
+_app_database_url: str | None = None
 
 
-# Inicialização limpa da aplicação principal.
-# Estes metadados são o que alimentam a tela inicial do Swagger (/docs).
-app = FastAPI(
-    title="StudyFlow API",
-    description="RESTful API para gestão de estudos, seguindo o padrão Layered Architecture",
-    version="1.0.0",
-    lifespan=lifespan,
-)
+def create_app() -> FastAPI:
+    global _app, _app_database_url
 
-# Registramos as rotas do arquivo candidates.py.
-# include_router age como o "require" das rotas do Laravel.
-# prefix="/api/v1": Prática de DevOps para versionar a API. O endpoint final vira POST /api/v1/candidates/
-app.include_router(candidates.router, prefix="/api/v1")
+    database_url = os.getenv("DATABASE_URL") or Settings().database_url  # type: ignore
+
+    if _app is not None and _app_database_url == database_url:
+        return _app
+
+    engine, session_factory = setup_database(database_url)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+        yield
+
+        await engine.dispose()
+
+    app = FastAPI(
+        title="StudyFlow API",
+        description="RESTful API para gestão de estudos, seguindo o padrão Layered Architecture",
+        version="1.0.0",
+        lifespan=lifespan,
+    )
+    app.state.engine = engine
+    app.state.session_factory = session_factory
+
+    Instrumentator().instrument(app).expose(app)
+    app.include_router(candidates.router, prefix="/api/v1")
+    _app = app
+    _app_database_url = database_url
+    return app
+
+
+app = create_app()

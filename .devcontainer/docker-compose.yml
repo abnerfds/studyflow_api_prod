@@ -8,6 +8,15 @@ services:
       # Sincronização de código. Mapeia a pasta atual (..) do host para o /workspace do container.
       # ":cached" otimiza leitura no Mac/Windows.
       - ..:/workspace:cached
+      - /var/run/docker.sock:/var/run/docker.sock
+
+    # 👇 ADICIONE ESTAS DUAS SEÇÕES:
+    environment:
+      - TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # 👆 ATÉ AQUI
 
     # Mantém o container vivo indefinidamente.
     command: sleep infinity

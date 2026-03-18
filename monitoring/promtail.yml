@@ -1,0 +1,22 @@
+server:
+  # Define a porta interna para o próprio Promtail expor suas métricas de funcionamento
+  http_listen_port: 9080
+
+positions:
+  # Arquivo onde o Promtail anota até qual linha do log ele já leu, evitando envios duplicados caso o container reinicie
+  filename: /tmp/positions.yaml
+
+clients:
+  # Endereço do Loki na rede do Docker para onde os pacotes de texto serão despachados
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: system
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          # Etiqueta (tag) principal que usaremos no Grafana para filtrar e encontrar estes logs
+          job: fastapi-logs
+          # Caminho virtual dentro do container onde o Promtail fará a leitura constante
+          __path__: /var/log/app.log

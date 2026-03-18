@@ -1,5 +1,5 @@
 # =============================================================================
-# .pre-commit-config.yaml — StudyFlow API
+# .pre-commit-config.yaml
 # =============================================================================
 # Configuração do pre-commit: executa as MESMAS verificações do CI localmente,
 # ANTES de cada commit. Isso cria uma "primeira linha de defesa" que impede
@@ -25,16 +25,17 @@ repos:
   # Hooks Básicos de Qualidade de Arquivo
   # ---------------------------------------------------------------------------
   # Verificações rápidas que não requerem instalação de dependências pesadas.
+  # Excelentes para pegar errinhos estruturais antes de rodar os linters maiores.
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
-      # Impede commits de arquivos que contêm chaves de API, senhas, etc.
+      # Impede commits de arquivos que contêm chaves de API, senhas, etc. (Segurança básica)
       - id: detect-private-key
 
-      # Remove espaços em branco ao final das linhas.
+      # Remove espaços em branco ao final das linhas. (Mantém o diff do git limpo)
       - id: trailing-whitespace
 
-      # Garante que todos os arquivos terminam com uma linha em branco (POSIX).
+      # Garante que todos os arquivos terminam com uma linha em branco (Padrão POSIX).
       - id: end-of-file-fixer
 
       # Valida a sintaxe de arquivos YAML (ci.yml, docker-compose.yml, etc.).
@@ -43,20 +44,24 @@ repos:
       # Valida a sintaxe de arquivos TOML (pyproject.toml).
       - id: check-toml
 
-      # Impede commits direto na branch main (força uso de PRs).
+      # Impede commits direto na branch main (força o uso de Pull Requests).
       - id: no-commit-to-branch
         args: [--branch, main]
 
   # ---------------------------------------------------------------------------
-  # Ruff — Linter + Formatter (substitui Black + isort + Flake8)
+  # Ruff — Linter, Formatter & SAST (Segurança)
   # ---------------------------------------------------------------------------
   # Sincronizado com `ruff check` e `ruff format --check` do CI.
-  # O pre-commit CORRIGE automaticamente os problemas (ao contrário do CI,
-  # que apenas REPORTA). Após a correção, o arquivo é re-staged automaticamente.
+  # O Ruff centraliza as funções do Black, isort, Flake8 e do Bandit (via regras "S").
+  #
+  # Vantagem do pre-commit: Ele CORRIGE automaticamente os problemas (auto-fix),
+  # ao contrário do CI, que apenas reporta a falha. Após a correção pelo Ruff,
+  # o pre-commit falhará intencionalmente para que você possa revisar a mudança,
+  # fazer um `git add` no arquivo corrigido e commitar novamente.
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.8.4
     hooks:
-      # Equivalente a `ruff check --fix` — corrige violações de lint e isort.
+      # Equivalente a `ruff check --fix` — corrige violações de lint, isort e segurança.
       - id: ruff
         args: [--fix]
 
@@ -67,34 +72,24 @@ repos:
   # Mypy — Verificação de Tipos Estáticos
   # ---------------------------------------------------------------------------
   # Sincronizado com `mypy . --config-file pyproject.toml` do CI.
-  # NOTA: O Mypy é a etapa mais lenta do pre-commit (~5-15s em projetos médios).
-  # A configuração `additional_dependencies` garante que as bibliotecas
-  # necessárias estejam disponíveis no ambiente isolado do pre-commit.
+  # NOTA: O Mypy costuma ser a etapa mais lenta do pre-commit (~5-15s).
+  #
+  # A configuração `additional_dependencies` é CRUCIAL aqui. Como o pre-commit
+  # roda os hooks em ambientes virtuais isolados, o Mypy não teria acesso às
+  # bibliotecas do seu projeto para inspecionar as tipagens (stubs) delas.
+  # Mantenha esta lista sempre sincronizada com as libs principais do seu projeto.
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.13.0
     hooks:
       - id: mypy
-        # Passa os arquivos staged + configuração do pyproject.toml.
+        # Passa a configuração centralizada do pyproject.toml.
         args: [--config-file, pyproject.toml]
-        # Dependências necessárias para o Mypy inspecionar os stubs de tipo.
-        # Mantenha sincronizado com o requirements.txt do projeto.
+        # Dependências necessárias para o Mypy entender os tipos de terceiros.
         additional_dependencies:
           - "fastapi>=0.135.0"
           - "pydantic>=2.0.0"
           - "pydantic-settings>=2.0.0"
           - "sqlalchemy>=2.0.0"
           - "pytest>=9.0.0"
-
-  # ---------------------------------------------------------------------------
-  # Bandit — SAST (Análise de Segurança)
-  # ---------------------------------------------------------------------------
-  # Sincronizado com `bandit -r . -ll --exclude tests/` do CI.
-  # O pre-commit executa o Bandit apenas nos arquivos Python staged.
-  - repo: https://github.com/PyCQA/bandit
-    rev: 1.8.3
-    hooks:
-      - id: bandit
-        # Aponta para a configuração centralizada no pyproject.toml.
-        args: [-c, pyproject.toml]
-        # Restringe a análise apenas a arquivos Python (ignora YAML, TOML, etc.).
-        types: [python]
+          - "prometheus-fastapi-instrumentator"
+          - "alembic"

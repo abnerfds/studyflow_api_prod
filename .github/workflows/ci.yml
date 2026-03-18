@@ -1,14 +1,14 @@
 # =============================================================================
-# CI Pipeline — StudyFlow API
+# CI Pipeline
 # =============================================================================
-# Arquitetura: 3 jobs independentes rodando em PARALELO.
+# Arquitetura: 2 jobs independentes rodando em PARALELO.
 #
 # Fail-Fast Strategy:
 #   - Cada job é autônomo. Todos iniciam ao mesmo tempo, maximizando a
 #     eficiência de tempo de execução.
 #   - `concurrency.cancel-in-progress: true` garante que um novo push
 #     cancela a run anterior do mesmo branch, evitando desperdício de runners.
-#   - O PR/push só é aprovado se TODOS os 3 jobs passarem (status checks
+#   - O PR/push só é aprovado se TODOS os jobs passarem (status checks
 #     obrigatórios configurados nas Branch Protection Rules do repositório).
 #
 # Triggers:
@@ -25,23 +25,20 @@ on:
   pull_request:
 
 # Cancela runs em progresso do mesmo branch/PR ao receber um novo push.
-# Economiza minutos do GitHub Actions e evita runs de código obsoleto.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   # ---------------------------------------------------------------------------
-  # JOB 1: Linter & Formatter — Ruff
+  # JOB 1: Linter, Formatter & Security — Ruff
   # ---------------------------------------------------------------------------
   # Ruff substitui simultaneamente: Black (formatter) + isort (import sorter)
-  # + Flake8 (linter). Uma única ferramenta, escrita em Rust, ~100x mais rápida.
-  #
-  # `ruff check` — verifica violações de estilo, imports e anti-patterns.
-  # `ruff format --check` — verifica formatação sem modificar os arquivos.
+  # + Flake8 (linter) + Bandit (SAST/Security via regras "S").
+  # Uma única ferramenta, escrita em Rust, incrivelmente rápida.
   # ---------------------------------------------------------------------------
   lint:
-    name: "Linter & Formatter (Ruff)"
+    name: "Linter, Formatter & Security (Ruff)"
     runs-on: ubuntu-latest
 
     steps:
@@ -52,14 +49,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          # Cache das dependências pip baseado no hash do requirements.txt.
-          # Reduz o tempo de instalação de ~30s para ~2s em runs subsequentes.
           cache: "pip"
 
       - name: Instalar Ruff
         run: pip install ruff
 
-      - name: "ruff check — Análise de código (lint + isort)"
+      - name: "ruff check — Análise de código, imports e segurança (SAST)"
         run: ruff check .
 
       - name: "ruff format --check — Verificação de formatação (estilo Black)"
@@ -68,9 +63,7 @@ jobs:
   # ---------------------------------------------------------------------------
   # JOB 2: Static Type Checking — Mypy
   # ---------------------------------------------------------------------------
-  # Mypy em modo estrito (`--strict`) habilita todas as verificações de tipo,
-  # incluindo: disallow-untyped-defs, warn-return-any, no-implicit-reexport.
-  #
+  # Mypy em modo estrito (`--strict`) habilita todas as verificações de tipo.
   # Instalamos o requirements.txt completo para que o Mypy possa inspecionar
   # os stubs de tipo das bibliotecas (FastAPI, Pydantic, SQLAlchemy).
   # ---------------------------------------------------------------------------
@@ -95,21 +88,17 @@ jobs:
         run: mypy . --config-file pyproject.toml
 
   # ---------------------------------------------------------------------------
-  # JOB 3: Security Analysis — Bandit
+  # JOB 3: Testes Automatizados — Pytest
   # ---------------------------------------------------------------------------
-  # Bandit é o SAST (Static Application Security Testing) padrão para Python.
-  # Ele analisa o AST do código em busca de padrões de vulnerabilidade comuns:
-  # SQL injection, hardcoded passwords, uso de subprocess inseguro, etc.
-  #
-  # Flags:
-  #   -r .            → recursivo a partir da raiz do projeto
-  #   -l              → reporta severidade LOW, MEDIUM e HIGH (tudo)
-  #   -c pyproject.toml → aplica os `skips` configurados (B101, B104)
-  #   --exclude       → ignora diretório de testes e venvs
+  # Executa a suíte de testes unitários e de integração.
+  # Garante que a lógica de negócio e os endpoints continuam funcionando.
   # ---------------------------------------------------------------------------
-  security:
-    name: "Security Analysis (Bandit)"
+  test:
+    name: "Unit & Integration Tests (Pytest)"
     runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: "postgresql+asyncpg://dummy:dummy@localhost:5432/dummy"
 
     steps:
       - name: Checkout do código-fonte
@@ -121,8 +110,28 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
-      - name: Instalar Bandit
-        run: pip install bandit
+      - name: Instalar todas as dependências (App + Testes)
+        # 👇 MUDANÇA AQUI: Apontamos para o arquivo de testes unificado
+        run: pip install -r requirements-test.txt
 
-      - name: "bandit — Escaneamento de vulnerabilidades de segurança"
-        run: bandit -r . -l -c pyproject.toml --exclude tests/,.venv/,venv/
+      - name: "pytest — Executar testes (Docker já está embutido no Runner)"
+        run: pytest -v --cov=. --cov-report=term-missing
+
+  # ---------------------------------------------------------------------------
+  # JOB 4: Validação do Container — Docker Build
+  # ---------------------------------------------------------------------------
+  # Tenta construir a imagem Docker da API. Se quebrar aqui, significa que
+  # o Dockerfile está inválido ou faltam dependências no nível do SO.
+  # ---------------------------------------------------------------------------
+  docker-check:
+    name: "Docker Build Check"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código-fonte
+        uses: actions/checkout@v4
+
+      - name: "Docker Build — Validar montagem da imagem"
+        # Tenta "buildar" a imagem usando o Dockerfile da raiz.
+        # Não faz o push, apenas verifica se compila com sucesso.
+        run: docker build -t studyflow-api:test .
