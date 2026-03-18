@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 import os
 
 from fastapi import FastAPI
-from prometheus_fastapi_instrumentator import Instrumentator  # type: ignore
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from config import Settings
 from database import Base, setup_database
