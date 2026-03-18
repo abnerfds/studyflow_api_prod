@@ -97,6 +97,9 @@ jobs:
     name: "Unit & Integration Tests (Pytest)"
     runs-on: ubuntu-latest
 
+    env:
+      DATABASE_URL: "postgresql+asyncpg://dummy:dummy@localhost:5432/dummy"
+
     steps:
       - name: Checkout do código-fonte
         uses: actions/checkout@v4
