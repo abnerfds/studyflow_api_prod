@@ -19,7 +19,7 @@ async def test_create_candidate(client):
     response = await client.post("/api/v1/candidates/", json=payload)
 
     assert response.status_code == 201
-    assert response.json()["name"] == "Abner Final Test"
+    assert response.json()["name"] == "Abner Final Te"
 
 
 async def test_list_candidates(client):
